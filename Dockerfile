@@ -6,7 +6,7 @@ MAINTAINER Gabriele Facciolo <gfacciol@gmail.com>
 RUN apt-get update && apt-get install -y \
     apache2 libapache2-mod-php5 mysql-server memcached zendframework php5-cli php5-memcached php5-mysql php5-curl \
     apache2 uwsgi uwsgi-plugin-psgi libplack-perl libdigest-hmac-perl libjson-xs-perl libfile-util-perl libapache2-mod-uwsgi libswitch-perl \
-    git gnutls-bin runit wget curl net-tools vim build-essential
+    gnutls-bin runit wget curl net-tools vim build-essential
 
 # Zotero
 RUN mkdir -p /srv/zotero/log/upload && \
@@ -22,8 +22,9 @@ RUN mkdir -p /srv/zotero/log/upload && \
     chown www-data: /var/log/httpd/api-errors
 
 # Dataserver
-RUN git clone --depth=1 git://git.27o.de/dataserver /srv/zotero/dataserver && \
-    chown www-data:www-data /srv/zotero/dataserver/tmp
+ADD dependencies/dataserver /srv/zotero/dataserver
+RUN chown www-data:www-data /srv/zotero/dataserver/tmp
+
 #RUN cd /srv/zotero/dataserver/include && rm -r Zend && ln -s /usr/share/php/libzend-framework-php/Zend
 RUN cd /srv/zotero/dataserver/include && rm -r Zend && ln -s /usr/share/php/Zend
 
@@ -50,26 +51,26 @@ RUN /etc/init.d/mysql start && \
 # Zotero Configuration
 ADD dataserver/dbconnect.inc.php dataserver/config.inc.php /srv/zotero/dataserver/include/config/
 ADD dataserver/sv/zotero-download /etc/sv/zotero-download
-ADD dataserver/sv/zotero-upload   /etc/sv/zotero-upload  
-ADD dataserver/sv/zotero-error    /etc/sv/zotero-error   
+ADD dataserver/sv/zotero-upload   /etc/sv/zotero-upload
+ADD dataserver/sv/zotero-error    /etc/sv/zotero-error
 RUN cd /etc/service && \
     ln -s ../sv/zotero-download /etc/service/ && \
     ln -s ../sv/zotero-upload /etc/service/ && \
-    ln -s ../sv/zotero-error /etc/service/ 
+    ln -s ../sv/zotero-error /etc/service/
 
 
 
 # ZSS
-RUN git clone --depth=1 git://git.27o.de/zss /srv/zotero/zss && \
-    mkdir /srv/zotero/storage && \
+ADD dependencies/zss /srv/zotero/zss
+RUN mkdir /srv/zotero/storage && \
     chown www-data:www-data /srv/zotero/storage
 
 ADD zss/zss.yaml /etc/uwsgi/apps-available/
 ADD zss/ZSS.pm   /srv/zotero/zss/
 ADD zss/zss.psgi /srv/zotero/zss/
-RUN ln -s /etc/uwsgi/apps-available/zss.yaml /etc/uwsgi/apps-enabled 
+RUN ln -s /etc/uwsgi/apps-available/zss.yaml /etc/uwsgi/apps-enabled
 # fix uwsgi init scipt (always fails)
-ADD patches/uwsgi /etc/init.d/uwsgi 
+ADD patches/uwsgi /etc/init.d/uwsgi
 
 
 ## failed attempt to install Zotero Web-Library locally
@@ -93,7 +94,7 @@ RUN service mysql start && service memcached start && \
     ./add_user 101 test test && \
     ./add_user 102 test2 test2 && \
     ./add_group -o test -f members -r members -e members testgroup && \
-    ./add_groupuser testgroup test2 member 
+    ./add_groupuser testgroup test2 member
 
 
 # docker server startup
@@ -104,4 +105,4 @@ CMD service mysql start && \
     service apache2 start && \
     service memcached start && \
     bash -c "/usr/sbin/runsvdir-start&" && \
-    /bin/bash 
+    /bin/bash
